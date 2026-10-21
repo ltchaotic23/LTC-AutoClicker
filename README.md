@@ -18,14 +18,20 @@ See [`LTC-AutoClicker-v2/README.md`](./LTC-AutoClicker-v2/README.md) for full de
 - **No Keylogging**: Hotkey detection uses the native Windows `GetAsyncKeyState` API **strictly** to query the physical up/down state of the single user-configured hotkey and the emergency `Pause` break key. The application does not monitor general typing, capture passwords, or log typed text.
 - **Local-Only Operation**: LTC AutoClicker contains **zero network, telemetry, or analytics transmission code**. No data ever leaves your computer.
 - **Local Configuration & Stored Fields**:
-  Settings are persisted locally in plaintext JSON at `%LOCALAPPDATA%\AutoClicker-LTC\config.json`. The exact fields stored are strictly limited to your user preferences:
-  - `speed_val`, `speed_unit`: Click rate interval and unit (e.g., `100`, `"ms"` or `"CPS"`).
-  - `mouse_button`, `click_type`: Mouse button (`"left"`, `"right"`, `"middle"`) and trigger type (`"single"`, `"double"`).
-  - `hotkey`, `trigger_mode`: Activation hotkey (`"F6"`) and trigger behavior (`"toggle"` or `"hold"`).
-  - `target_key`: Repeated keyboard key in Key Presser mode (e.g., `"Space"`).
-  - `locked_x`, `locked_y`: Screen coordinates when *Lock Target Position* is enabled (default `0, 0`).
-  - `window_x`, `window_y`: Desktop window coordinates for session restoration across launches.
-  - Boolean preferences: `jitter`, `sound_enabled`, `corner_panic`, `central_scatter`, `slow_presets`.
+  Settings are persisted locally in plaintext JSON at `%LOCALAPPDATA%\AutoClicker-LTC\config.json`. The exact fields and default values stored are strictly limited to your operational preferences:
+  - `active_mode`: Active tool mode (default `"clicker"`, or `"key_presser"`).
+  - `speed_val`, `speed_unit`: Speed value and unit (default `100.0`, `"ms"` or `"CPS"`).
+  - `click_interval_ms`, `target_cps`: Calculated interval and rate (default `100`, `10.0`).
+  - `mouse_button`, `click_type`: Mouse button (`"left"`, `"right"`, `"middle"`) and click type (`"single"`, `"double"`).
+  - `hotkey`, `hotkey_vk`: Activation key name and Win32 virtual-key code (default `"F6"`, `0x75`).
+  - `target_key`, `target_key_vk`: Repeated key in Key Presser mode (default `"Space"`, `0x20`).
+  - `trigger_mode`: Activation behavior (default `"toggle"`, or `"hold"`).
+  - `click_limit`: Repeat limit before auto-stopping (default `0` = infinite).
+  - `hold_duration_ms`: Key/button down-to-up duration (default `15` ms).
+  - `panic_corner`: Emergency stop when cursor touches top-left screen corner (default `true`).
+  - `lock_cursor_pos`, `locked_x`, `locked_y`: Screen targeting coordinates (default `false`, `-1`, `-1` = unassigned).
+  - `window_x`, `window_y`: Desktop window coordinates for session restoration (default `-1`, `-1` = OS default).
+  - Safety & feature flags: `self_click_protection` (`true`), `sound_enabled` (`true`), `jitter` (`false`), `pin_top` (`false`), `central_scatter` (`false`), `slow_presets` (`false`), `slow_preset_choice` (`"fast"`).
   
   *All local data can be instantly wiped by clicking **Reset Defaults** in the app or deleting the `%LOCALAPPDATA%\AutoClicker-LTC\` folder.*
 - **Diagnostic Crash Logs**:
