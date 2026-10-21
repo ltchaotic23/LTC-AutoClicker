@@ -36,9 +36,10 @@ class TestCrashReporter(unittest.TestCase):
     def test_path_sanitization_and_pruning(self):
         """Verify that absolute user paths are sanitized and old logs pruned."""
         from src.crash_reporter import _sanitize_text
-        fake_traceback = "File \"C:\\Users\\ltc\\Projects\\app\\main.py\", line 12\n"
+        user_name = os.environ.get("USERNAME", "testuser")
+        fake_traceback = f'File "C:\\Users\\{user_name}\\Projects\\app\\main.py", line 12\n'
         sanitized = _sanitize_text(fake_traceback)
-        self.assertNotIn("\\ltc\\", sanitized)
+        self.assertNotIn(f"\\Users\\{user_name}", sanitized)
         self.assertIn("%", sanitized)
 
     def test_hook_tkinter_exceptions(self):
