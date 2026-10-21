@@ -17,9 +17,19 @@ See [`LTC-AutoClicker-v2/README.md`](./LTC-AutoClicker-v2/README.md) for full de
 
 - **No Keylogging**: Hotkey detection uses the native Windows `GetAsyncKeyState` API **strictly** to query the physical up/down state of the single user-configured hotkey and the emergency `Pause` break key. The application does not monitor general typing, capture passwords, or log typed text.
 - **Local-Only Operation**: LTC AutoClicker contains **zero network, telemetry, or analytics transmission code**. No data ever leaves your computer.
-- **Local Configuration & Crash Data**:
-  - Configuration is stored locally in `%LOCALAPPDATA%\AutoClicker-LTC\config.json` (click intervals, button type, target coordinate, and window position). You can wipe all stored data at any time via the in-app **Reset Defaults** button or by deleting the directory.
-  - Diagnostic crash logs are written exclusively to `%LOCALAPPDATA%\AutoClicker-LTC\crash_reports\`, automatically redact user profile usernames, and keep only the 5 most recent logs.
+- **Local Configuration & Stored Fields**:
+  Settings are persisted locally in plaintext JSON at `%LOCALAPPDATA%\AutoClicker-LTC\config.json`. The exact fields stored are strictly limited to your user preferences:
+  - `speed_val`, `speed_unit`: Click rate interval and unit (e.g., `100`, `"ms"` or `"CPS"`).
+  - `mouse_button`, `click_type`: Mouse button (`"left"`, `"right"`, `"middle"`) and trigger type (`"single"`, `"double"`).
+  - `hotkey`, `trigger_mode`: Activation hotkey (`"F6"`) and trigger behavior (`"toggle"` or `"hold"`).
+  - `target_key`: Repeated keyboard key in Key Presser mode (e.g., `"Space"`).
+  - `locked_x`, `locked_y`: Screen coordinates when *Lock Target Position* is enabled (default `0, 0`).
+  - `window_x`, `window_y`: Desktop window coordinates for session restoration across launches.
+  - Boolean preferences: `jitter`, `sound_enabled`, `corner_panic`, `central_scatter`, `slow_presets`.
+  
+  *All local data can be instantly wiped by clicking **Reset Defaults** in the app or deleting the `%LOCALAPPDATA%\AutoClicker-LTC\` folder.*
+- **Diagnostic Crash Logs**:
+  Diagnostic logs are written exclusively to `%LOCALAPPDATA%\AutoClicker-LTC\crash_reports\`, automatically redact user profile usernames, and keep only the 5 most recent crash files. Native fault logs are capped at 256 KB.
 
 ---
 

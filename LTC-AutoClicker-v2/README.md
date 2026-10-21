@@ -24,7 +24,7 @@ A high-performance Windows desktop autoclicker utility built with Python, Custom
 - **Target Position Locking**: Lock clicks to a fixed `(X, Y)` coordinate with interactive on-screen `Pick (X, Y)` target selection.
 - **Central Cursor Scatter**: 8-spot rotating cursor scatter around screen center.
 - **Slow AFK Presets**: Experimental modes with 5-minute (Very Slow), 1-minute (Slow), and 100ms (Fast) presets.
-- **Per-User Configuration**: Settings and window coordinates automatically persist across sessions in `%LOCALAPPDATA%\AutoClicker-LTC\config.json`.
+- **Per-User Configuration & Transparency**: Settings and window coordinates persist locally in `%LOCALAPPDATA%\AutoClicker-LTC\config.json` (`speed_val`, `speed_unit`, `mouse_button`, `click_type`, `hotkey`, `trigger_mode`, `target_key`, `locked_x`, `locked_y`, `window_x`, `window_y`, and toggle flags). All local data can be wiped via the in-app *Reset Defaults* button or by deleting the directory.
 - **Privacy & Security**: Native `GetAsyncKeyState` polling is strictly isolated to your configured hotkey and `Pause` emergency key. Zero background keystroke logging, zero telemetry, and zero network transmission.
 
 ## Run From Source
