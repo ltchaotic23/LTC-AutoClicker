@@ -34,8 +34,9 @@ def _sanitize_text(text: str) -> str:
 
 
 def _prune_old_reports(crash_dir: str, max_keep: int = 5):
-    """Retain only the most recent crash logs to bound disk usage."""
+    """Retain only the most recent crash logs and rotate native_fault.log to bound disk usage."""
     try:
+        # 1. Prune standard Python exception logs
         files = [
             os.path.join(crash_dir, f)
             for f in os.listdir(crash_dir)
@@ -48,6 +49,17 @@ def _prune_old_reports(crash_dir: str, max_keep: int = 5):
                     os.remove(f)
                 except OSError:
                     pass
+
+        # 2. Rotate native_fault.log if it exceeds 256KB
+        fault_log = os.path.join(crash_dir, "native_fault.log")
+        if os.path.exists(fault_log) and os.path.getsize(fault_log) > 256 * 1024:
+            backup_log = os.path.join(crash_dir, "native_fault.log.1")
+            try:
+                if os.path.exists(backup_log):
+                    os.remove(backup_log)
+                os.rename(fault_log, backup_log)
+            except OSError:
+                pass
     except Exception:
         pass
 
@@ -77,7 +89,6 @@ def write_crash_report(exc_type: Any, exc_value: Any, exc_tb: Any, context: str 
         report_path = os.path.join(crash_dir, f"crash_{timestamp}_{os.getpid()}.log")
 
         raw_traceback = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
-        sanitized_traceback = _sanitize_text(raw_traceback)
 
         lines = [
             "=" * 70,
@@ -98,12 +109,13 @@ def write_crash_report(exc_type: Any, exc_value: Any, exc_tb: Any, context: str 
         lines.extend([
             "-" * 70,
             "EXCEPTION TRACEBACK (Paths Sanitized):",
-            sanitized_traceback,
+            raw_traceback,
             "=" * 70,
             "[Notice: This report was generated locally and is never transmitted over a network.]",
         ])
 
-        report_content = "\n".join(lines)
+        # Sanitize the ENTIRE output so usernames in context, threads, or tracebacks are redacted
+        report_content = _sanitize_text("\n".join(lines))
         with open(report_path, "w", encoding="utf-8", errors="replace") as f:
             f.write(report_content)
 
@@ -141,6 +153,7 @@ def install_crash_handler(app_instance=None):
     # 2. Native fault handler (captures hard 0xC0000005 access violations)
     try:
         crash_dir = get_crash_dir()
+        _prune_old_reports(crash_dir, max_keep=5)
         fault_log_path = os.path.join(crash_dir, "native_fault.log")
         fault_file = open(fault_log_path, "a", encoding="utf-8", errors="replace")
         faulthandler.enable(file=fault_file, all_threads=True)

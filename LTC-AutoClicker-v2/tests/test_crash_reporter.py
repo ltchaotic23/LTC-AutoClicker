@@ -35,12 +35,20 @@ class TestCrashReporter(unittest.TestCase):
 
     def test_path_sanitization_and_pruning(self):
         """Verify that absolute user paths are sanitized and old logs pruned."""
-        from src.crash_reporter import _sanitize_text
+        from src.crash_reporter import _sanitize_text, _prune_old_reports
         user_name = os.environ.get("USERNAME", "testuser")
         fake_traceback = f'File "C:\\Users\\{user_name}\\Projects\\app\\main.py", line 12\n'
         sanitized = _sanitize_text(fake_traceback)
         self.assertNotIn(f"\\Users\\{user_name}", sanitized)
         self.assertIn("%", sanitized)
+
+        # Verify native_fault.log rotation when oversized
+        fault_log = os.path.join(self.temp_dir.name, "native_fault.log")
+        with open(fault_log, "wb") as f:
+            f.write(b"X" * (300 * 1024))  # 300KB
+        _prune_old_reports(self.temp_dir.name, max_keep=5)
+        self.assertFalse(os.path.exists(fault_log))
+        self.assertTrue(os.path.exists(os.path.join(self.temp_dir.name, "native_fault.log.1")))
 
     def test_hook_tkinter_exceptions(self):
         """Verify hook_tkinter_exceptions routes callbacks through write_crash_report."""
