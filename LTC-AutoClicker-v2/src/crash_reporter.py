@@ -1,7 +1,8 @@
 """
-Crash Reporter and Telemetry Layer for LTC AutoClicker.
+Local Diagnostic Crash Logger for LTC AutoClicker.
 Captures unhandled exceptions across main thread, worker threads, Tkinter callbacks,
 and native C-level fault signals into %LOCALAPPDATA%\\AutoClicker-LTC\\crash_reports\\.
+All reports remain strictly on the local machine and are sanitized to prevent exposing personal usernames.
 """
 
 import os
@@ -14,6 +15,41 @@ from typing import Optional, Any
 
 _INSTALLED = False
 _CRASH_DIR: Optional[str] = None
+
+
+def _sanitize_text(text: str) -> str:
+    """Sanitize absolute user directory paths from tracebacks to protect user privacy."""
+    try:
+        user_home = os.path.expanduser("~")
+        if user_home:
+            text = text.replace(user_home, "%USERPROFILE%")
+            text = text.replace(user_home.replace("\\", "/"), "%USERPROFILE%")
+        user_name = os.environ.get("USERNAME")
+        if user_name:
+            text = text.replace(f"\\Users\\{user_name}", "\\Users\\%USERNAME%")
+            text = text.replace(f"/Users/{user_name}", "/Users/%USERNAME%")
+    except Exception:
+        pass
+    return text
+
+
+def _prune_old_reports(crash_dir: str, max_keep: int = 5):
+    """Retain only the most recent crash logs to bound disk usage."""
+    try:
+        files = [
+            os.path.join(crash_dir, f)
+            for f in os.listdir(crash_dir)
+            if f.startswith("crash_") and f.endswith(".log")
+        ]
+        if len(files) > max_keep:
+            files.sort(key=os.path.getmtime)
+            for f in files[:-max_keep]:
+                try:
+                    os.remove(f)
+                except OSError:
+                    pass
+    except Exception:
+        pass
 
 
 def get_crash_dir() -> str:
@@ -32,18 +68,23 @@ def get_crash_dir() -> str:
 
 
 def write_crash_report(exc_type: Any, exc_value: Any, exc_tb: Any, context: str = "Unhandled Exception") -> str:
-    """Format and write a detailed diagnostic crash report to disk."""
+    """Format and write a sanitized local diagnostic crash report to disk."""
     try:
         crash_dir = get_crash_dir()
+        _prune_old_reports(crash_dir, max_keep=5)
+
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         report_path = os.path.join(crash_dir, f"crash_{timestamp}_{os.getpid()}.log")
 
+        raw_traceback = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        sanitized_traceback = _sanitize_text(raw_traceback)
+
         lines = [
             "=" * 70,
-            f"LTC AUTOCLICKER CRASH REPORT - {datetime.datetime.now().isoformat()}",
+            f"LTC AUTOCLICKER LOCAL CRASH REPORT - {datetime.datetime.now().isoformat()}",
             "=" * 70,
             f"Context: {context}",
-            f"Python Version: {sys.version}",
+            f"Python Version: {sys.version.split()[0]}",
             f"Platform: {sys.platform}",
             f"PID: {os.getpid()}",
             f"Active Threads: {threading.active_count()}",
@@ -56,9 +97,10 @@ def write_crash_report(exc_type: Any, exc_value: Any, exc_tb: Any, context: str 
 
         lines.extend([
             "-" * 70,
-            "EXCEPTION TRACEBACK:",
-            "".join(traceback.format_exception(exc_type, exc_value, exc_tb)),
+            "EXCEPTION TRACEBACK (Paths Sanitized):",
+            sanitized_traceback,
             "=" * 70,
+            "[Notice: This report was generated locally and is never transmitted over a network.]",
         ])
 
         report_content = "\n".join(lines)

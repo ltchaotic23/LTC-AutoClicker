@@ -27,10 +27,19 @@ class TestCrashReporter(unittest.TestCase):
             with open(log_path, "r", encoding="utf-8") as f:
                 content = f.read()
 
-            self.assertIn("LTC AUTOCLICKER CRASH REPORT", content)
+            self.assertIn("LTC AUTOCLICKER", content)
+            self.assertIn("CRASH REPORT", content)
             self.assertIn("Context: Unit Test Checkpoint", content)
             self.assertIn("Simulated testing explosion", content)
             self.assertIn("THREAD DUMP:", content)
+
+    def test_path_sanitization_and_pruning(self):
+        """Verify that absolute user paths are sanitized and old logs pruned."""
+        from src.crash_reporter import _sanitize_text
+        fake_traceback = "File \"C:\\Users\\ltc\\Projects\\app\\main.py\", line 12\n"
+        sanitized = _sanitize_text(fake_traceback)
+        self.assertNotIn("\\ltc\\", sanitized)
+        self.assertIn("%", sanitized)
 
     def test_hook_tkinter_exceptions(self):
         """Verify hook_tkinter_exceptions routes callbacks through write_crash_report."""

@@ -25,6 +25,7 @@ A high-performance Windows desktop autoclicker utility built with Python, Custom
 - **Central Cursor Scatter**: 8-spot rotating cursor scatter around screen center.
 - **Slow AFK Presets**: Experimental modes with 5-minute (Very Slow), 1-minute (Slow), and 100ms (Fast) presets.
 - **Per-User Configuration**: Settings and window coordinates automatically persist across sessions in `%LOCALAPPDATA%\AutoClicker-LTC\config.json`.
+- **Privacy & Security**: Native `GetAsyncKeyState` polling is strictly isolated to your configured hotkey and `Pause` emergency key. Zero background keystroke logging, zero telemetry, and zero network transmission.
 
 ## Run From Source
 

@@ -1,0 +1,5 @@
+# Fully pinned dependencies for reproducible builds & CI
+customtkinter==6.0.0
+Pillow==12.3.0
+pyinstaller==6.22.3
+pywin32==312
