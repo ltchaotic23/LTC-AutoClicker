@@ -1,0 +1,45 @@
+# Release artifacts, binaries, and historical backups
+*.exe
+*.zip
+/archive/
+/backups/
+
+# Accidental local secrets, keys, and per-user config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+config.json
+
+# Python runtime artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Build and Distribution directories
+build/
+dist/
+*.spec.bak
+crash_reports/
+*.dmp
+*.log
+*.tmp
+
+# IDE, Editor, and OS Artifacts
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
