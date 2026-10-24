@@ -13,6 +13,24 @@ A high-performance Windows desktop autoclicker utility built with Python, Custom
   - Bottom bezel live Session Click / Cast counter (`footer_counter`) with instant reset (`footer_reset`)
   - Always-on-top toggle (`footer_pin`, `topmost_switch_var`)
 
+## Interface Preview
+
+<p align="center">
+  <img src="assets/screenshots/main_view.png" alt="LTC AutoClicker Main Interface" width="45%" />
+  &nbsp;&nbsp;
+  <img src="assets/screenshots/settings_view.png" alt="LTC AutoClicker Settings Drawer" width="45%" />
+</p>
+
+<p align="center">
+  <em>Left: Main Controller Interface • Right: Settings & Advanced Safety Controls</em>
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/compact_view.png" alt="LTC AutoClicker Compact Mini Bar" width="40%" />
+  <br />
+  <em>Compact Mini Bar Mode</em>
+</p>
+
 ## Features
 
 - **High-Speed Clicking & Key Presser**: Custom millisecond intervals or Clicks Per Second (CPS) powered by the Win32 `SendInput` API, with hardware scan-code keyboard key repeating (`Space`, `E`, `Backspace`, `Enter`, etc.).
