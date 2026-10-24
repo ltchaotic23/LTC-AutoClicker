@@ -98,8 +98,8 @@ python -m unittest discover -s tests -v
   - Safety & feature flags: `self_click_protection` (`true`), `sound_enabled` (`true`), `jitter` (`false`), `pin_top` (`false`), `central_scatter` (`false`), `slow_presets` (`false`), `slow_preset_choice` (`"fast"`).
   
   *All local data can be instantly wiped by clicking **Reset Defaults** in the app or deleting the `%LOCALAPPDATA%\AutoClicker-LTC\` folder.*
-- **Diagnostic Crash Logs**:
-  Diagnostic logs are written exclusively to `%LOCALAPPDATA%\AutoClicker-LTC\crash_reports\`, automatically redact user profile usernames, and keep only the 5 most recent crash files. Native fault logs are capped at 256 KB.
+- **Zero Disk Diagnostic Logs**:
+  LTC AutoClicker writes **zero crash logs, telemetry files, or dumps to disk**. If an unexpected runtime exception ever occurs, it presents an in-memory, transient on-screen Windows alert dialog with sanitized file paths so you can view or screenshot the error without leaving any files on your hard drive.
 
 ---
 

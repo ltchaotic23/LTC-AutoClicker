@@ -1,65 +1,60 @@
 import os
 import sys
-import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
-from src.crash_reporter import write_crash_report, hook_tkinter_exceptions
+from src.crash_reporter import (
+    format_error_details,
+    sanitize_text,
+    show_error_dialog,
+    hook_tkinter_exceptions,
+)
 
 
 class TestCrashReporter(unittest.TestCase):
-    def setUp(self):
-        self.temp_dir = tempfile.TemporaryDirectory()
-
-    def tearDown(self):
-        self.temp_dir.cleanup()
-
-    def test_write_crash_report(self):
-        """Verify crash report writes valid diagnostic files containing traceback and thread dump."""
-        with patch("src.crash_reporter.get_crash_dir", return_value=self.temp_dir.name):
-            try:
-                raise ValueError("Simulated testing explosion")
-            except ValueError as e:
-                exc_type, exc_val, exc_tb = sys.exc_info()
-                log_path = write_crash_report(exc_type, exc_val, exc_tb, context="Unit Test Checkpoint")
-
-            self.assertTrue(os.path.exists(log_path))
-            with open(log_path, "r", encoding="utf-8") as f:
-                content = f.read()
-
-            self.assertIn("LTC AUTOCLICKER", content)
-            self.assertIn("CRASH REPORT", content)
-            self.assertIn("Context: Unit Test Checkpoint", content)
-            self.assertIn("Simulated testing explosion", content)
-            self.assertIn("THREAD DUMP:", content)
-
-    def test_path_sanitization_and_pruning(self):
-        """Verify that absolute user paths are sanitized and old logs pruned."""
-        from src.crash_reporter import _sanitize_text, _prune_old_reports
+    def test_format_error_details_and_sanitization(self):
+        """Verify error formatting produces sanitized in-memory details with zero disk writes."""
         user_name = os.environ.get("USERNAME", "testuser")
-        fake_traceback = f'File "C:\\Users\\{user_name}\\Projects\\app\\main.py", line 12\n'
-        sanitized = _sanitize_text(fake_traceback)
+        try:
+            raise ValueError("Simulated testing explosion")
+        except ValueError as e:
+            exc_type, exc_val, exc_tb = sys.exc_info()
+            msg = format_error_details(exc_type, exc_val, exc_tb, context="Unit Test Checkpoint")
+
+        self.assertIn("LTC AutoClicker", msg)
+        self.assertIn("ValueError", msg)
+        self.assertIn("Simulated testing explosion", msg)
+        self.assertIn("Context: Unit Test Checkpoint", msg)
+        self.assertIn("Zero-Disk Notice", msg)
+
+        # Verify username is not leaked if user path was in traceback
+        fake_path_text = f"File 'C:\\Users\\{user_name}\\Projects\\main.py', line 10"
+        sanitized = sanitize_text(fake_path_text)
         self.assertNotIn(f"\\Users\\{user_name}", sanitized)
         self.assertIn("%", sanitized)
 
-        # Verify native_fault.log rotation when oversized
-        fault_log = os.path.join(self.temp_dir.name, "native_fault.log")
-        with open(fault_log, "wb") as f:
-            f.write(b"X" * (300 * 1024))  # 300KB
-        _prune_old_reports(self.temp_dir.name, max_keep=5)
-        self.assertFalse(os.path.exists(fault_log))
-        self.assertTrue(os.path.exists(os.path.join(self.temp_dir.name, "native_fault.log.1")))
+    def test_show_error_dialog_invokes_win32_messagebox(self):
+        """Verify show_error_dialog invokes Win32 MessageBoxW with error icon and zero disk activity."""
+        with patch("ctypes.windll.user32.MessageBoxW") as mock_msgbox:
+            show_error_dialog(RuntimeError, RuntimeError("Mock error"), None, context="Test Context")
+            self.assertTrue(mock_msgbox.called)
+            args = mock_msgbox.call_args[0]
+            # args: (hwnd, text, title, uType)
+            self.assertEqual(args[0], 0)
+            self.assertIn("Mock error", args[1])
+            self.assertEqual(args[2], "LTC AutoClicker — Unexpected Error")
+            self.assertEqual(args[3], 0x10)  # MB_ICONERROR | MB_OK
 
     def test_hook_tkinter_exceptions(self):
-        """Verify hook_tkinter_exceptions routes callbacks through write_crash_report."""
+        """Verify hook_tkinter_exceptions routes callbacks through show_error_dialog."""
         mock_app = MagicMock()
         hook_tkinter_exceptions(mock_app)
         self.assertTrue(hasattr(mock_app, "report_callback_exception"))
 
-        with patch("src.crash_reporter.write_crash_report") as mock_write:
+        with patch("src.crash_reporter.show_error_dialog") as mock_show:
             mock_app.report_callback_exception(KeyError, KeyError("missing_key"), None)
-            self.assertTrue(mock_write.called)
-            self.assertEqual(mock_write.call_args[1]["context"], "Tkinter Event/Timer Callback")
+            self.assertTrue(mock_show.called)
+            self.assertEqual(mock_show.call_args[1]["context"], "Tkinter Event/Timer Callback")
 
 
 if __name__ == "__main__":
