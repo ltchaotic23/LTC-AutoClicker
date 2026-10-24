@@ -1,4 +1,4 @@
-"""Build script to compile LTC AutoClicker v2 into a standalone Windows .exe."""
+"""Build script to compile LTC AutoClicker into a standalone Windows .exe."""
 import os
 import subprocess
 import sys
@@ -66,7 +66,7 @@ def build(install=False):
     icon_path = os.path.join(base_dir, "assets", "icon.ico")
     assets_dir = os.path.join(base_dir, "assets")
 
-    print("[*] Starting LTC AutoClicker v2 standalone build...")
+    print("[*] Starting LTC AutoClicker standalone build...")
 
     spec_path = os.path.join(base_dir, "LTC-AutoClicker.spec")
 

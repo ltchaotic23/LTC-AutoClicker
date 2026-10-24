@@ -1,6 +1,6 @@
 # LTC AutoClicker
 
-A high-performance Windows desktop autoclicker utility built with Python, CustomTkinter, and native Win32 `SendInput` APIs.
+A high-performance Windows desktop autoclicker utility built with Python, CustomTkinter, and native Win32 `SendInput` APIs, featuring a modern frameless dark metallic greyscale shell.
 
 ## Interface Preview
 
@@ -20,14 +20,60 @@ A high-performance Windows desktop autoclicker utility built with Python, Custom
   <em>Compact Mini Bar Mode (unobtrusive overlay for multitasking)</em>
 </p>
 
-## Current Version: v2.0
+---
 
-The active source code of LTC AutoClicker is located in [`LTC-AutoClicker-v2/`](./LTC-AutoClicker-v2/):
-- **Standalone Portable Binary**: Can be run directly from any directory without installation.
-- **Optional Start Menu Integration**: Can be installed to `%LOCALAPPDATA%\Programs\LTC-AutoClicker\` with a canonical Windows Start Menu shortcut by running `python build.py --install`.
-- **Features**: Frameless metallic dark greyscale shell, glass-inspired inset caption buttons, 8-direction edge-drag resizing, high-speed Win32 clicking (CPS / ms), Key Presser mode, Lock Target Position (`Pick X, Y`), Self-Click Protection, central scatter, slow presets, and bezel counter/pin controls.
+## Key Features
 
-See [`LTC-AutoClicker-v2/README.md`](./LTC-AutoClicker-v2/README.md) for full development, configuration, testing, and build documentation.
+- **High-Speed Clicking & Key Presser**: Custom millisecond intervals or Clicks Per Second (CPS) powered by the Win32 `SendInput` API, with hardware scan-code keyboard key repeating (`Space`, `E`, `Backspace`, `Enter`, etc.).
+- **Frameless Metallic Shell**: Custom dark metallic bezel with subtle glass gradients, built-in inset caption controls (minimize/close), and full 8-direction edge-drag resizing.
+- **Compact Mini Bar Mode**: Minimalist, unobtrusive floating bar for multitasking and gaming overlay.
+- **Button & Click Types**: Left, right, or middle mouse buttons; single or double clicking.
+- **Global Hotkey & Safety Controls**:
+  - Global hotkey listener (default **F6**, supports keyboard keys + `Mouse 4` / `Mouse 5` / `Mid Click`) with in-app key rebinding.
+  - Emergency failsafes: dedicated **Pause** break key, top-left screen corner panic stop, and automatic **Self-Click Protection** when hovering over the app window.
+  - Dual trigger modes: **Toggle** (start/stop) or **Hold Key** (active only while held).
+- **Target Position Locking**: Lock clicks to a fixed `(X, Y)` coordinate with interactive on-screen `Pick (X, Y)` target selection.
+- **Central Cursor Scatter**: 8-spot rotating cursor scatter around screen center.
+- **Slow AFK Presets**: Dedicated modes with 5-minute (Very Slow), 1-minute (Slow), and 100ms (Fast) presets.
+- **Live Session Statistics**: Real-time click/key counter and active timer in bezel footer with one-click reset.
+
+---
+
+## Quick Start & Installation
+
+### Option 1: Standalone Portable Executable (Recommended)
+Download `LTC-AutoClicker.exe` from the [Latest Release](https://github.com/ltchaotic23/LTC-AutoClicker/releases/latest) and run it directly. No installation or Python runtime is required.
+
+### Option 2: Run From Source
+Prerequisites: Python 3.12+ on Windows.
+
+```powershell
+python -m pip install -r requirements.txt
+python main.py
+```
+
+### Option 3: Compile Standalone Executable
+To compile your own standalone executable using PyInstaller:
+
+```powershell
+python -m pip install -r requirements-dev.txt
+python build.py
+```
+The compiled binary will be generated at `dist/LTC-AutoClicker.exe`.
+
+To compile and register the application in `%LOCALAPPDATA%\Programs\LTC-AutoClicker\` with a canonical Windows Start Menu shortcut:
+```powershell
+python build.py --install
+```
+
+---
+
+## Automated Test Suite
+
+The test suite includes 35 comprehensive unit, fuzzing, and stress tests:
+```powershell
+python -m unittest discover -s tests -v
+```
 
 ---
 
