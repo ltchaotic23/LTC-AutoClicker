@@ -157,6 +157,9 @@ class ClickEngine:
             if self._thread and self._thread.is_alive():
                 self._stop_event.set()
                 self._thread.join(timeout=0.25)
+                if self._thread.is_alive():
+                    # Previous worker is still winding down; its cleanup would cancel a new session
+                    return
             self._stop_event.clear()
             self._running = True
             self.session_start_time = time.monotonic()
@@ -257,6 +260,15 @@ class ClickEngine:
         except Exception:
             pass
         return False
+
+    def _is_protected_window_foreground(self) -> bool:
+        """Return True if self-click protection is active and the app window has keyboard focus."""
+        if not self.self_click_protection or not self.protected_hwnd:
+            return False
+        try:
+            return ctypes.windll.user32.GetForegroundWindow() == self.protected_hwnd
+        except Exception:
+            return False
 
     def _do_click(self, override_button: Optional[str] = None, hold_ms: Optional[float] = None):
         """Perform a single or double click with realistic press duration."""
@@ -472,6 +484,11 @@ class ClickEngine:
                 if self.on_state_change:
                     self.on_state_change(False)
                 break
+
+            if self._is_protected_window_foreground():
+                # Pause key presses while the Auto Clicker window itself would receive them
+                self._wait_interruptible(min(0.04, max(0.01, self.get_effective_interval())))
+                continue
 
             if not self._do_key_press():
                 break

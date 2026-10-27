@@ -45,6 +45,14 @@ class TestCrashReporter(unittest.TestCase):
             self.assertEqual(args[2], "LTC AutoClicker — Unexpected Error")
             self.assertEqual(args[3], 0x10)  # MB_ICONERROR | MB_OK
 
+    def test_repeated_error_shows_one_dialog(self):
+        """A recurring identical error (e.g. from a timer) must not open endless modal dialogs."""
+        with patch("ctypes.windll.user32.MessageBoxW") as mock_msgbox:
+            for _ in range(5):
+                show_error_dialog(ValueError, ValueError("Recurring timer failure"), None, context="Repeat Test")
+            show_error_dialog(ValueError, ValueError("A different failure"), None, context="Repeat Test")
+            self.assertEqual(mock_msgbox.call_count, 2)
+
     def test_hook_tkinter_exceptions(self):
         """Verify hook_tkinter_exceptions routes callbacks through show_error_dialog."""
         mock_app = MagicMock()

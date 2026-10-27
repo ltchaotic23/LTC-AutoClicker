@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-Only the latest active version on `master` / `main` receives security patches and updates.
+Only the latest release and the current `main` branch receive security fixes.
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 2.x     | :white_check_mark: |
-| 1.x     | :x:                |
+| Version        | Supported          |
+| -------------- | ------------------ |
+| Latest release | :white_check_mark: |
+| Older releases | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -21,7 +21,7 @@ Please provide:
 - A clear description of the vulnerability and potential impact.
 - Exact reproduction steps or a minimal proof of concept.
 
-### Privacy Notice: Crash Reports
-LTC AutoClicker logs diagnostic stack traces locally to `%LOCALAPPDATA%\AutoClicker-LTC\crash_reports\` when an unhandled exception or crash occurs. These log files can include local file system paths containing your Windows username (e.g., `C:\Users\<username>\...`). 
+### Privacy Notice: Error Reports
+LTC AutoClicker does not write crash logs to disk. If an unexpected error occurs, it shows an on-screen error dialog with your user folder path replaced by `%USERPROFILE%`. Check the text before sharing a screenshot of it publicly.
 
-**Please redact or sanitize your username from crash reports before sharing them publicly.**
+The v1.0.0 release and earlier builds wrote crash logs to `%LOCALAPPDATA%\AutoClicker-LTC\crash_reports\`. Those files can contain your Windows username in file paths, so redact them before sharing. The folder is safe to delete.

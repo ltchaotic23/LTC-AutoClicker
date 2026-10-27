@@ -47,8 +47,8 @@ class TestFuzzConfig(unittest.TestCase):
         raw_payloads = [
             '{"target_cps": 1e309}',   # Overflow to Infinity in JSON
             '{"target_cps": -1e309}',  # Overflow to -Infinity
-            '{"speed_val": 1e309}',
-            '{"speed_val": -1e309}',
+            '{"target_cps": NaN}',
+            '{"target_cps": Infinity}',
         ]
         for payload in raw_payloads:
             with open(self.config_path, "w", encoding="utf-8") as f:

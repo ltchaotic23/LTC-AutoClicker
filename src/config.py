@@ -3,10 +3,11 @@ import json
 import math
 from typing import Dict, Any, Optional
 
+from .hotkey import VK_MID_CLICK, is_valid_hotkey_vk, is_valid_target_key_vk
+
 DEFAULT_CONFIG: Dict[str, Any] = {
     "active_mode": "clicker",
     "speed_unit": "ms",
-    "speed_val": 100.0,
     "click_interval_ms": 100,
     "target_cps": 10.0,
     "mouse_button": "left",
@@ -17,7 +18,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "target_key": "Space",
     "target_key_vk": 0x20,
     "trigger_mode": "toggle",      # 'toggle' or 'hold'
-    "pin_top": False,
     "always_on_top": False,
     "click_limit": 0,              # 0 = infinite
     "hold_duration_ms": 15,        # ms down-to-up separation
@@ -25,7 +25,6 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "central_scatter": False,      # 8-spot rotating central screen scatter
     "slow_presets": False,         # Experimental mode replacing custom speed with presets
     "slow_preset_choice": "fast",  # 'very_slow' (5m), 'slow' (1m), 'fast' (100ms)
-    "auto_save": True,
     "sound_enabled": True,
     "self_click_protection": True, # Pause clicking while cursor is inside the app window
     "lock_cursor_pos": False,      # Lock clicks to a fixed screen coordinate
@@ -104,6 +103,16 @@ class ConfigManager:
                     cfg["slow_preset_choice"] = "fast"
                 if cfg.get("active_mode") not in ("clicker", "key_presser"):
                     cfg["active_mode"] = "clicker"
+
+                # Reject key codes the in-app binder would never produce (e.g. 0x01 = left mouse button)
+                if not is_valid_hotkey_vk(cfg["hotkey_vk"]):
+                    cfg["hotkey"] = DEFAULT_CONFIG["hotkey"]
+                    cfg["hotkey_vk"] = DEFAULT_CONFIG["hotkey_vk"]
+                if not is_valid_target_key_vk(cfg["target_key_vk"]):
+                    cfg["target_key"] = DEFAULT_CONFIG["target_key"]
+                    cfg["target_key_vk"] = DEFAULT_CONFIG["target_key_vk"]
+                if cfg["hotkey_vk"] == VK_MID_CLICK and cfg["mouse_button"] == "middle":
+                    cfg["mouse_button"] = "left"
         except Exception:
             pass  # Fall back to defaults safely
 

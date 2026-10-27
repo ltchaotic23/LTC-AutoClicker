@@ -30,6 +30,19 @@ VK_MAP: Dict[str, int] = {
     "U": 0x55, "V": 0x56, "W": 0x57, "X": 0x58, "Y": 0x59, "Z": 0x5A,
 }
 
+VK_MID_CLICK = 0x04
+VK_PAUSE = 0x13
+
+
+def is_valid_hotkey_vk(vk: int) -> bool:
+    """Mouse 4 / Mouse 5 / Mid Click or a keyboard key, excluding the Pause emergency key."""
+    return (vk in (0x04, 0x05, 0x06) or 0x08 <= vk <= 0xFE) and vk != VK_PAUSE
+
+
+def is_valid_target_key_vk(vk: int) -> bool:
+    """Any keyboard key except the Pause emergency key."""
+    return 0x08 <= vk <= 0xFE and vk != VK_PAUSE
+
 
 class HotkeyListener:
     """Global hotkey listener using Windows GetAsyncKeyState for zero-overhead background detection."""

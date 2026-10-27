@@ -12,7 +12,7 @@ from typing import Optional, List, Tuple, Callable
 from PIL import Image, ImageDraw, ImageTk
 
 from .engine import ClickEngine
-from .hotkey import HotkeyListener, VK_MAP
+from .hotkey import HotkeyListener, VK_MAP, VK_MID_CLICK
 from .config import ConfigManager, DEFAULT_CONFIG
 
 # Global appearance setup
@@ -216,6 +216,39 @@ def _bake_action_circle_badge_pil(size: int, mode: str, hover: bool) -> Image.Im
     final_img = img.resize((size, size), Image.Resampling.LANCZOS)
     _cache_put_gradient(key, final_img)
     return final_img
+
+
+class _MonitorInfo(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("rcMonitor", wintypes.RECT),
+        ("rcWork", wintypes.RECT),
+        ("dwFlags", wintypes.DWORD),
+    ]
+
+
+# Private user32 handle so argtypes/restype (64-bit HMONITOR) don't leak into ctypes.windll.user32
+_user32_typed = ctypes.WinDLL("user32")
+_user32_typed.MonitorFromPoint.argtypes = [wintypes.POINT, wintypes.DWORD]
+_user32_typed.MonitorFromPoint.restype = wintypes.HMONITOR
+_user32_typed.GetMonitorInfoW.argtypes = [wintypes.HMONITOR, ctypes.POINTER(_MonitorInfo)]
+_user32_typed.GetMonitorInfoW.restype = wintypes.BOOL
+
+
+def _nearest_monitor_work_area(x: int, y: int) -> Optional[Tuple[int, int, int, int]]:
+    """Return (left, top, right, bottom) of the work area on the monitor nearest to (x, y)."""
+    try:
+        hmon = _user32_typed.MonitorFromPoint(wintypes.POINT(int(x), int(y)), 2)  # MONITOR_DEFAULTTONEAREST
+        if not hmon:
+            return None
+        info = _MonitorInfo()
+        info.cbSize = ctypes.sizeof(_MonitorInfo)
+        if not _user32_typed.GetMonitorInfoW(hmon, ctypes.byref(info)):
+            return None
+        rc = info.rcWork
+        return rc.left, rc.top, rc.right, rc.bottom
+    except Exception:
+        return None
 
 
 def _format_elapsed_mmss(seconds: float) -> str:
@@ -2149,7 +2182,7 @@ class AutoclickerApp(ctk.CTk):
         ToolTip(self.trigger_segmented, "Toggle: Tap key to start/stop • Hold Key: Active while key is held")
         ToolTip(self.hold_entry, "Mouse button or key press duration in milliseconds (15ms default)")
         ToolTip(self.limit_entry, "Max clicks/presses before auto-stopping (0 = infinite)")
-        ToolTip(self.panic_switch, "Instantly stops when mouse touches top-left screen corner (0, 0) or Pause key is pressed")
+        ToolTip(self.panic_switch, "Stops when the mouse touches the main screen's top-left corner (0, 0). The Pause key always stops, even with this off")
         ToolTip(self.sound_switch, "Play a subtle short tone when starting or stopping")
         ToolTip(self.lock_pos_switch, "Lock clicks to a fixed screen coordinate instead of following the cursor")
         ToolTip(self.pick_pos_btn, "Click, then left-click anywhere on screen to lock that target (X, Y) coordinate")
@@ -2355,7 +2388,14 @@ class AutoclickerApp(ctk.CTk):
         if self._capturing_hotkey:
             self._end_hotkey_capture()
 
-    def _clamp_to_virtual_screen(self, wx: int, wy: int, width: int, height: int) -> Tuple[int, int]:
+    def _clamp_to_monitor(self, wx: int, wy: int, width: int, height: int) -> Tuple[int, int]:
+        """Keep the window inside the work area of the monitor nearest to it (no gaps between monitors)."""
+        area = _nearest_monitor_work_area(wx + width // 2, wy + height // 2)
+        if area is not None:
+            left, top, right, bottom = area
+            wx = max(left + 10, min(wx, max(left + 10, right - width - 10)))
+            wy = max(top + 10, min(wy, max(top + 10, bottom - height - 10)))
+            return wx, wy
         try:
             user32 = ctypes.windll.user32
             vx = user32.GetSystemMetrics(76)  # SM_XVIRTUALSCREEN
@@ -2504,7 +2544,7 @@ class AutoclickerApp(ctk.CTk):
         height = self.central_bevel.winfo_reqheight() + 70 + extra_height
         self.minsize(width, height)
         if self._window_pos is not None:
-            wx, wy = self._clamp_to_virtual_screen(self._window_pos[0], self._window_pos[1], width, height)
+            wx, wy = self._clamp_to_monitor(self._window_pos[0], self._window_pos[1], width, height)
             self._window_pos = (wx, wy)
             self.geometry(f"{width}x{height}+{wx}+{wy}")
         else:
@@ -2531,8 +2571,14 @@ class AutoclickerApp(ctk.CTk):
             except Exception:
                 pass
 
+    def _queue_ui_call(self, fn: Callable[[], None]):
+        """Run fn on the Tk main thread via the event queue (safe to call from the hotkey thread)."""
+        self._event_queue.put(("call", fn))
+        if threading.current_thread() == threading.main_thread():
+            self._drain_event_queue()
+
     def _on_hotkey_trigger(self):
-        self.after(0, self._toggle_clicking)
+        self._queue_ui_call(self._toggle_clicking)
 
     def _on_hotkey_press(self):
         def action():
@@ -2543,7 +2589,7 @@ class AutoclickerApp(ctk.CTk):
                         winsound.Beep(1000, 70)
                     except Exception:
                         pass
-        self.after(0, action)
+        self._queue_ui_call(action)
 
     def _on_hotkey_release(self):
         def action():
@@ -2554,7 +2600,7 @@ class AutoclickerApp(ctk.CTk):
                         winsound.Beep(600, 70)
                     except Exception:
                         pass
-        self.after(0, action)
+        self._queue_ui_call(action)
 
     def _on_trigger_mode_change(self, mode_val: str):
         mode = "hold" if mode_val == "Hold Key" else "toggle"
@@ -2755,9 +2801,12 @@ class AutoclickerApp(ctk.CTk):
         self._queue_poll_after_id = None
         if not self.winfo_exists():
             return
-        self._drain_event_queue()
-        if self.winfo_exists():
-            self._queue_poll_after_id = self.after(20, self._poll_event_queue)
+        try:
+            self._drain_event_queue()
+        finally:
+            # Keep polling even if a handler raised, or engine/hotkey events would stop being processed
+            if self.winfo_exists():
+                self._queue_poll_after_id = self.after(20, self._poll_event_queue)
 
     def _drain_event_queue(self):
         """Drain all pending cross-thread events immediately."""
@@ -2772,6 +2821,8 @@ class AutoclickerApp(ctk.CTk):
                     self._handle_countdown_update(data)
                 elif msg_type == "error":
                     self._handle_engine_error(data)
+                elif msg_type == "call":
+                    data()
         except queue.Empty:
             pass
 
@@ -2930,6 +2981,13 @@ class AutoclickerApp(ctk.CTk):
         b = btn.lower()
         if b == "mid":
             b = "middle"
+        if b == "middle" and self.hotkey_vk_code == VK_MID_CLICK:
+            # Injected middle clicks would register as Mid Click hotkey presses and stop the clicker
+            prev = self.engine.button.capitalize()
+            self.btn_segmented.set("Mid" if prev == "Middle" else prev)
+            self.hotkey_btn.configure(text="Bind in use")
+            self.after(900, lambda: self.hotkey_btn.configure(text=f"{self.hotkey_listener.key_name} • Bind") if not self._capturing_hotkey else None)
+            return
         self.engine.button = b
         self._save_config()
 
@@ -3039,6 +3097,14 @@ class AutoclickerApp(ctk.CTk):
                 if not is_down:
                     self._mouse_init_down[vk] = False
             elif is_down:
+                if vk == VK_MID_CLICK and self.engine.button == "middle":
+                    if self.active_mode == "clicker":
+                        self.hotkey_btn.configure(text="Mid button!")
+                        self.after(900, lambda: self.hotkey_btn.configure(text="Press key…") if self._capturing_hotkey else None)
+                        self._mouse_init_down[vk] = True
+                        break
+                    self.engine.button = "left"
+                    self.btn_segmented.set("Left")
                 self.hotkey_vk_code = vk
                 self._end_hotkey_capture()
                 self._on_hotkey_change(label)
@@ -3100,10 +3166,9 @@ class AutoclickerApp(ctk.CTk):
             self.hotkey_btn.configure(text=f"{self.hotkey_listener.key_name} • Bind")
 
     def _on_emergency_stop(self):
-        try:
-            self.after(0, self.engine.stop)
-        except Exception:
-            pass
+        # Stop directly from the hotkey thread so the emergency key works even if the UI is busy;
+        # engine.stop() is thread-safe and reports state back through the event queue.
+        self.engine.stop()
 
     def _on_engine_error(self, message: str):
         self._event_queue.put(("error", message))
@@ -3144,7 +3209,7 @@ class AutoclickerApp(ctk.CTk):
         wx = int(cfg.get("window_x", -1))
         wy = int(cfg.get("window_y", -1))
         if wx != -1 or wy != -1:
-            self._window_pos = self._clamp_to_virtual_screen(wx, wy, 360, 360)
+            self._window_pos = self._clamp_to_monitor(wx, wy, 360, 360)
         else:
             self._window_pos = None
 

@@ -14,6 +14,10 @@ from typing import Optional, Any
 
 _INSTALLED = False
 
+# Errors already shown this session, so a failing recurring timer can't open endless modal dialogs
+_SHOWN_ERRORS = set()
+_SHOWN_LOCK = threading.Lock()
+
 
 def sanitize_text(text: str) -> str:
     """Sanitize absolute user directory paths from in-memory tracebacks to protect user privacy."""
@@ -60,6 +64,12 @@ def show_error_dialog(exc_type: Any, exc_value: Any, exc_tb: Any, context: str =
         sys.stderr.flush()
     except Exception:
         pass
+
+    signature = (context, "".join(traceback.format_exception_only(exc_type, exc_value)))
+    with _SHOWN_LOCK:
+        if signature in _SHOWN_ERRORS:
+            return
+        _SHOWN_ERRORS.add(signature)
 
     # Native Win32 MessageBoxW (works even if Tkinter event loop has crashed)
     try:

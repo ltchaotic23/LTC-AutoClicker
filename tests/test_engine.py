@@ -1,3 +1,4 @@
+import threading
 import time
 import unittest
 from unittest.mock import patch
@@ -145,6 +146,47 @@ class TestClickEngine(unittest.TestCase):
         self.assertEqual(mock_send_key.call_count, 6)
         mock_send_key.assert_any_call(0x08, is_up=False)
         mock_send_key.assert_any_call(0x08, is_up=True)
+
+    @patch("src.engine._send_key_event")
+    def test_key_presser_pauses_while_app_has_focus(self, mock_send_key):
+        """Key presses must not be typed into the Auto Clicker's own window."""
+        engine = ClickEngine()
+        engine.mode = "key_presser"
+        engine.interval_sec = 0.010
+        engine.protected_hwnd = 12345
+
+        with patch("ctypes.windll.user32.GetForegroundWindow", return_value=12345):
+            engine.start()
+            time.sleep(0.05)
+            engine.stop()
+
+        self.assertEqual(engine.total_clicks, 0)
+        self.assertFalse(mock_send_key.called)
+
+        # Another window in the foreground: presses resume
+        engine.click_limit = 2
+        with patch("ctypes.windll.user32.GetForegroundWindow", return_value=99999):
+            engine.start()
+            start_t = time.time()
+            while engine.is_running and time.time() - start_t < 1.0:
+                time.sleep(0.01)
+        self.assertEqual(engine.total_clicks, 2)
+
+    def test_start_refuses_while_previous_worker_alive(self):
+        """A worker that hasn't exited yet must not be revived alongside a new session."""
+        engine = ClickEngine()
+        release = threading.Event()
+        stuck = threading.Thread(target=release.wait, daemon=True)
+        stuck.start()
+        engine._thread = stuck
+
+        try:
+            engine.start()
+            self.assertFalse(engine.is_running)
+            self.assertIs(engine._thread, stuck)
+        finally:
+            release.set()
+            stuck.join(timeout=1.0)
 
 if __name__ == "__main__":
     unittest.main()

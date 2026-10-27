@@ -2,9 +2,10 @@ import unittest
 import os
 import shutil
 import tempfile
+import threading
 from unittest.mock import patch
 
-from src.gui import AutoclickerApp, _format_elapsed_mmss
+from src.gui import AutoclickerApp, _format_elapsed_mmss, _nearest_monitor_work_area
 from src.config import ConfigManager, DEFAULT_CONFIG
 
 
@@ -349,6 +350,60 @@ class TestGuiIntegration(unittest.TestCase):
             app.speed_entry.delete(0, "end")
             app._normalize_speed_entry()
             self.assertEqual(app.speed_entry.get(), "100")
+
+        finally:
+            app.destroy()
+
+
+    def test_mid_click_hotkey_blocks_middle_button(self):
+        """Mid Click hotkey and middle-button clicking can't be combined (injected clicks would toggle it)."""
+        app = AutoclickerApp()
+        app.withdraw()
+
+        try:
+            app.hotkey_vk_code = 0x04
+            app._on_hotkey_change("Mid Click")
+
+            app.btn_segmented.set("Mid")
+            app._on_mouse_button_change("Mid")
+            self.assertEqual(app.engine.button, "left")
+            self.assertEqual(app.btn_segmented.get(), "Left")
+
+            app.btn_segmented.set("Right")
+            app._on_mouse_button_change("Right")
+            self.assertEqual(app.engine.button, "right")
+
+        finally:
+            app.destroy()
+
+    def test_hotkey_callbacks_run_through_event_queue(self):
+        """Hotkey thread callbacks are marshalled to the Tk thread via the event queue."""
+        app = AutoclickerApp()
+        app.withdraw()
+        app.sound_enabled = False
+
+        try:
+            with patch.object(app.engine, "toggle") as mock_toggle:
+                worker = threading.Thread(target=app._on_hotkey_trigger)
+                worker.start()
+                worker.join()
+                self.assertFalse(mock_toggle.called)  # Not run on the hotkey thread
+                app._drain_event_queue()
+                self.assertTrue(mock_toggle.called)
+
+        finally:
+            app.destroy()
+
+    def test_saved_window_position_clamped_to_monitor(self):
+        """A position saved on a now-disconnected monitor is pulled back onto a real monitor."""
+        app = AutoclickerApp()
+        app.withdraw()
+
+        try:
+            wx, wy = app._clamp_to_monitor(50000, 50000, 345, 315)
+            left, top, right, bottom = _nearest_monitor_work_area(wx, wy)
+            self.assertTrue(left <= wx and wx + 345 <= right)
+            self.assertTrue(top <= wy and wy + 315 <= bottom)
 
         finally:
             app.destroy()
